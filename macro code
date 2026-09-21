@@ -1,0 +1,483 @@
+import customtkinter as ctk
+
+ctk.set_appearance_mode("Dark")
+
+THEMES = {
+    "Default": {
+        "container_bg": "#1a232d",
+        "container_border": "#2a3746",
+        "card_bg": "#151d26",
+        "card_border": "#273443",
+        "input_bg": "#121921",
+        "input_border": "#283544",
+        "button_bg": "#222c37",
+        "button_text": "#7b8c9e",
+        "active_bg": "#e3ecf5",
+        "active_text": "#121921",
+        "test_bg": "#2b9db7",
+        "del_bg": "#94484c",
+        "del_border": "#94484c",
+        "del_text": "#ffffff",
+        "ps_inner_bg": "#0e131a",
+        "ps_border": "#1f2a36"
+    },
+    "Custom Theme": {
+        "container_bg": "#485762",
+        "container_border": "#415d6c",
+        "card_bg": "#61717a",
+        "card_border": "#415d6c",
+        "input_bg": "#3e4c55",
+        "input_border": "#415d6c",
+        "button_bg": "#61717a",
+        "button_text": "#d0dfe8",
+        "active_bg": "#ffffff",
+        "active_text": "#121921",
+        "test_bg": "#4694b4",
+        "del_bg": "#705f67",
+        "del_border": "#74686f",
+        "del_text": "#e68d8e",
+        "ps_inner_bg": "#38454e",
+        "ps_border": "#415d6c"
+    }
+}
+
+class MacMacro(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+
+        # Frameless Overlay Settings
+        self.overrideredirect(True)
+        self.geometry("450x570+300+150")
+        self.wm_attributes("-alpha", 0.92)
+        self.configure(fg_color="#121820")
+
+        self._offsetx = 0
+        self._offsety = 0
+
+        # Outer Container Frame
+        self.container = ctk.CTkFrame(
+            self, 
+            fg_color="#1a232d", 
+            corner_radius=22, 
+            border_width=1, 
+            border_color="#2a3746"
+        )
+        self.container.pack(fill="both", expand=True, padx=8, pady=8)
+
+        # Drag Handle Bar
+        self.top_bar = ctk.CTkFrame(self.container, fg_color="transparent")
+        self.top_bar.pack(fill="x", padx=14, pady=(10, 4))
+        self.top_bar.bind("<Button-1>", self.click_window)
+        self.top_bar.bind("<B1-Motion>", self.drag_window)
+
+        # Close App Button
+        self.btn_close = ctk.CTkButton(
+            self.top_bar, 
+            text="✕", 
+            width=24, 
+            height=24, 
+            fg_color="#2b3745", 
+            hover_color="#a84343", 
+            text_color="#8999a7", 
+            corner_radius=12,
+            command=self.destroy
+        )
+        self.btn_close.pack(side="left")
+
+        # Search Bar Input
+        self.search = ctk.CTkEntry(
+            self.top_bar, 
+            placeholder_text="Search settings...", 
+            fg_color="#121921", 
+            border_color="#283544",
+            text_color="#c4d3e2",
+            placeholder_text_color="#4d5d6e",
+            height=34,
+            corner_radius=17,
+            width=190
+        )
+        self.search.pack(side="right")
+        self.search.bind("<Return>", lambda e: self.show_error_dialog("Search Execution"))
+
+        # Biome Ping Switch Row
+        self.toggle_frame = ctk.CTkFrame(self.container, fg_color="transparent")
+        self.toggle_frame.pack(fill="x", padx=16, pady=6)
+        
+        self.lbl_ping = ctk.CTkLabel(
+            self.toggle_frame, 
+            text="Ping when one of your chosen biomes appears.", 
+            font=("SF Pro Text", 11), 
+            text_color="#7b8c9e"
+        )
+        self.lbl_ping.pack(side="left")
+        
+        self.sw_ping = ctk.CTkSwitch(
+            self.toggle_frame, 
+            text="", 
+            progress_color="#00a8e8",
+            button_color="#ffffff",
+            switch_width=42,
+            switch_height=22,
+            command=lambda: self.show_error_dialog("Toggle Switch")
+        )
+        self.sw_ping.pack(side="right")
+        self.sw_ping.select()
+
+        # Pick Biomes Card
+        self.biomes_frame = ctk.CTkFrame(
+            self.container, 
+            fg_color="#151d26", 
+            corner_radius=18, 
+            border_width=1, 
+            border_color="#273443"
+        )
+        self.biomes_frame.pack(fill="x", padx=14, pady=8)
+
+        self.biomes_text = ctk.CTkFrame(self.biomes_frame, fg_color="transparent")
+        self.biomes_text.pack(side="left", padx=14, pady=12)
+
+        self.lbl_biome_title = ctk.CTkLabel(
+            self.biomes_text, 
+            text="Pick Biomes", 
+            font=("SF Pro Text", 13, "bold"), 
+            text_color="#ffffff"
+        )
+        self.lbl_biome_title.pack(anchor="w")
+
+        self.lbl_biome_sub = ctk.CTkLabel(
+            self.biomes_text, 
+            text="Ping fires when any of these...", 
+            font=("SF Pro Text", 10), 
+            text_color="#5a6b7c"
+        )
+        self.lbl_biome_sub.pack(anchor="w")
+
+        self.combo_biomes = ctk.CTkOptionMenu(
+            self.biomes_frame, 
+            values=["4 / 16", "Glitch", "Null", "Hell", "Starfall"],
+            fg_color="#273443", 
+            button_color="#334356",
+            text_color="#ffffff",
+            font=("SF Pro Text", 11, "bold"),
+            width=92,
+            height=32,
+            corner_radius=16,
+            command=lambda val: self.show_error_dialog(f"Select Biome: {val}")
+        )
+        self.combo_biomes.pack(side="right", padx=14)
+
+        # Discord Webhook & Delete Button
+        self.wh_frame = ctk.CTkFrame(self.container, fg_color="transparent")
+        self.wh_frame.pack(fill="x", padx=14, pady=6)
+
+        self.wh_entry = ctk.CTkEntry(
+            self.wh_frame, 
+            placeholder_text="Enter Discord Webhook URL...",
+            fg_color="#121921", 
+            border_color="#283544",
+            text_color="#8a9ba8",
+            placeholder_text_color="#4d5d6e",
+            height=40,
+            corner_radius=14
+        )
+        self.wh_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        self.wh_entry.bind("<Return>", lambda e: self.show_error_dialog("Save Webhook URL"))
+
+        self.btn_del = ctk.CTkButton(
+            self.wh_frame, 
+            text="X", 
+            width=40, 
+            height=40, 
+            fg_color="#94484c", 
+            hover_color="#ad5358", 
+            text_color="#ffffff",
+            font=("SF Pro Text", 12, "bold"),
+            corner_radius=14,
+            command=lambda: self.show_error_dialog("Delete Webhook")
+        )
+        self.btn_del.pack(side="right")
+
+        # Multi-Server Webhook Button
+        self.btn_add_wh = ctk.CTkButton(
+            self.container, 
+            text="+ Add Webhook (multi-server)", 
+            fg_color="#222c37", 
+            hover_color="#2c3947",
+            text_color="#7b8c9e",
+            font=("SF Pro Text", 11),
+            height=34,
+            corner_radius=14,
+            command=lambda: self.show_error_dialog("Add Webhook")
+        )
+        self.btn_add_wh.pack(fill="x", padx=14, pady=4)
+
+        # Role Mention Selector Row
+        self.roles_frame = ctk.CTkFrame(self.container, fg_color="transparent")
+        self.roles_frame.pack(fill="x", padx=14, pady=8)
+
+        self.role_buttons = []
+        roles_list = [("None", False), ("User", False), ("Role", False), ("@everyone", True)]
+        for role, is_selected in roles_list:
+            btn = ctk.CTkButton(
+                self.roles_frame, 
+                text=role, 
+                fg_color="#e3ecf5" if is_selected else "#222c37", 
+                text_color="#121921" if is_selected else "#7b8c9e", 
+                font=("SF Pro Text", 11, "bold" if is_selected else "normal"),
+                height=36, 
+                corner_radius=16,
+                command=lambda r=role: self.show_error_dialog(f"Set Mention Mode: {r}")
+            )
+            btn.pack(side="left", expand=True, fill="x", padx=3)
+            self.role_buttons.append((btn, is_selected))
+
+        # User/Role ID + Test Button Row
+        self.test_frame = ctk.CTkFrame(self.container, fg_color="transparent")
+        self.test_frame.pack(fill="x", padx=14, pady=6)
+
+        self.id_entry = ctk.CTkEntry(
+            self.test_frame, 
+            placeholder_text="User/Role ID (skip for None / @everyone)", 
+            fg_color="#121921", 
+            border_color="#283544",
+            placeholder_text_color="#4d5d6e",
+            height=40,
+            corner_radius=14
+        )
+        self.id_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        self.id_entry.bind("<Return>", lambda e: self.show_error_dialog("Test Webhook"))
+
+        self.btn_test = ctk.CTkButton(
+            self.test_frame, 
+            text="Test", 
+            width=80, 
+            height=40, 
+            fg_color="#2b9db7", 
+            hover_color="#34b1ce", 
+            text_color="#ffffff",
+            font=("SF Pro Text", 12, "bold"),
+            corner_radius=14,
+            command=lambda: self.show_error_dialog("Test Webhook Payload")
+        )
+        self.btn_test.pack(side="right")
+
+        # Custom Header Label
+        self.lbl_custom = ctk.CTkLabel(
+            self.container, 
+            text="CUSTOM", 
+            font=("SF Pro Text", 10, "bold"), 
+            text_color="#4d5d6e"
+        )
+        self.lbl_custom.pack(anchor="w", padx=16, pady=(8, 2))
+
+        # Private Server Link Card
+        self.ps_frame = ctk.CTkFrame(
+            self.container, 
+            fg_color="#151d26", 
+            corner_radius=18, 
+            border_width=1, 
+            border_color="#273443"
+        )
+        self.ps_frame.pack(fill="x", padx=14, pady=4)
+
+        self.lbl_ps = ctk.CTkLabel(
+            self.ps_frame, 
+            text="Private Server Link", 
+            font=("SF Pro Text", 13, "bold"), 
+            text_color="#ffffff"
+        )
+        self.lbl_ps.pack(anchor="w", padx=14, pady=(10, 6))
+
+        self.ps_entry = ctk.CTkEntry(
+            self.ps_frame, 
+            placeholder_text="Enter Private Server Link...",
+            fg_color="#0e131a", 
+            border_color="#1f2a36",
+            text_color="#8a9ba8",
+            placeholder_text_color="#4d5d6e",
+            height=36,
+            corner_radius=12
+        )
+        self.ps_entry.pack(fill="x", padx=14, pady=(0, 12))
+        self.ps_entry.bind("<Return>", lambda e: self.show_error_dialog("Save Private Server Link"))
+
+        # Bottom-Right Theme Toggle Button (Outer Container)
+        self.btn_bottom_theme = ctk.CTkButton(
+            self.container,
+            text="⚙ Themes",
+            width=80,
+            height=24,
+            fg_color="#1a232d",
+            hover_color="#283544",
+            text_color="#4d5d6e",
+            font=("SF Pro Text", 10),
+            corner_radius=8,
+            command=self.toggle_theme_overlay
+        )
+        self.btn_bottom_theme.pack(side="right", padx=14, pady=(0, 8))
+
+        # Theme Settings Overlay Frame
+        self.overlay_visible = False
+        self.overlay_frame = ctk.CTkFrame(
+            self.container, 
+            fg_color="#121820", 
+            corner_radius=18, 
+            border_width=1, 
+            border_color="#415d6c"
+        )
+
+        # Close Button inside overlay (top left)
+        self.btn_close_overlay = ctk.CTkButton(
+            self.overlay_frame, 
+            text="✕", 
+            width=24, 
+            height=24, 
+            fg_color="#2b3745", 
+            hover_color="#a84343", 
+            text_color="#8999a7", 
+            corner_radius=12,
+            command=self.toggle_theme_overlay
+        )
+        self.btn_close_overlay.place(x=14, y=14)
+
+        lbl_settings = ctk.CTkLabel(
+            self.overlay_frame, 
+            text="Theme Settings", 
+            font=("SF Pro Text", 16, "bold"), 
+            text_color="#ffffff"
+        )
+        lbl_settings.pack(pady=(40, 10))
+
+        lbl_settings_sub = ctk.CTkLabel(
+            self.overlay_frame, 
+            text="Select an overlay theme:", 
+            font=("SF Pro Text", 11), 
+            text_color="#7b8c9e"
+        )
+        lbl_settings_sub.pack(pady=(0, 20))
+
+        self.theme_picker = ctk.CTkSegmentedButton(
+            self.overlay_frame, 
+            values=["Default", "Custom Theme"],
+            command=self.switch_theme,
+            selected_color="#4694b4",
+            selected_hover_color="#54a6c8",
+            height=36,
+            corner_radius=14
+        )
+        self.theme_picker.set("Default")
+        self.theme_picker.pack(padx=30, pady=10)
+
+        # Close / Return Button
+        self.btn_done_overlay = ctk.CTkButton(
+            self.overlay_frame,
+            text="Close Settings",
+            width=120,
+            height=32,
+            fg_color="#283544",
+            hover_color="#364656",
+            text_color="#ffffff",
+            corner_radius=12,
+            command=self.toggle_theme_overlay
+        )
+        self.btn_done_overlay.pack(pady=(20, 10))
+
+        lbl_esc_hint = ctk.CTkLabel(
+            self.overlay_frame, 
+            text="Press [ ESC ] to return", 
+            font=("SF Pro Text", 10), 
+            text_color="#4d5d6e"
+        )
+        lbl_esc_hint.pack(pady=(10, 0))
+
+        # Global Keyboard Bindings
+        self.bind_all("<Escape>", self.toggle_theme_overlay)
+
+    def show_error_dialog(self, action_name):
+        error_win = ctk.CTkToplevel(self)
+        error_win.title("Execution Error")
+        error_win.geometry("320x160")
+        error_win.resizable(False, False)
+        error_win.attributes("-topmost", True)
+        error_win.configure(fg_color="#161e27")
+
+        lbl_title = ctk.CTkLabel(
+            error_win, 
+            text="⚠️ Execution Failed", 
+            font=("SF Pro Text", 14, "bold"), 
+            text_color="#e68d8e"
+        )
+        lbl_title.pack(pady=(18, 6))
+
+        lbl_msg = ctk.CTkLabel(
+            error_win, 
+            text=f"Unable to perform action: '{action_name}'.\nAn internal execution error occurred.", 
+            font=("SF Pro Text", 11), 
+            text_color="#a2b3c4",
+            wraplength=280
+        )
+        lbl_msg.pack(pady=(0, 14))
+
+        btn_ok = ctk.CTkButton(
+            error_win, 
+            text="OK", 
+            width=80, 
+            height=28, 
+            fg_color="#283544", 
+            hover_color="#364656", 
+            text_color="#ffffff",
+            corner_radius=10,
+            command=error_win.destroy
+        )
+        btn_ok.pack()
+
+    def toggle_theme_overlay(self, event=None):
+        if self.overlay_visible:
+            self.overlay_frame.place_forget()
+            self.overlay_visible = False
+        else:
+            self.overlay_frame.place(relx=0.04, rely=0.04, relwidth=0.92, relheight=0.92)
+            self.overlay_visible = True
+
+    def switch_theme(self, theme_name):
+        t = THEMES[theme_name]
+        
+        self.container.configure(fg_color=t["container_bg"], border_color=t["container_border"])
+        self.search.configure(fg_color=t["input_bg"], border_color=t["input_border"])
+        self.btn_bottom_theme.configure(fg_color=t["container_bg"])
+        
+        self.biomes_frame.configure(fg_color=t["card_bg"], border_color=t["card_border"])
+        self.combo_biomes.configure(fg_color=t["button_bg"], button_color=t["card_border"])
+        
+        self.wh_entry.configure(fg_color=t["input_bg"], border_color=t["input_border"])
+        self.btn_del.configure(
+            fg_color=t["del_bg"], 
+            border_color=t["del_border"], 
+            border_width=1, 
+            text_color=t["del_text"]
+        )
+        self.btn_add_wh.configure(fg_color=t["button_bg"], text_color=t["button_text"])
+        
+        for btn, is_selected in self.role_buttons:
+            if is_selected:
+                btn.configure(fg_color=t["active_bg"], text_color=t["active_text"])
+            else:
+                btn.configure(fg_color=t["button_bg"], text_color=t["button_text"])
+                
+        self.id_entry.configure(fg_color=t["input_bg"], border_color=t["input_border"])
+        self.btn_test.configure(fg_color=t["test_bg"])
+        self.ps_frame.configure(fg_color=t["card_bg"], border_color=t["card_border"])
+        self.ps_entry.configure(fg_color=t["ps_inner_bg"], border_color=t["ps_border"])
+
+    def click_window(self, event):
+        self._offsetx = event.x
+        self._offsety = event.y
+
+    def drag_window(self, event):
+        x = self.winfo_pointerx() - self._offsetx
+        y = self.winfo_pointery() - self._offsety
+        self.geometry(f"+{x}+{y}")
+
+if __name__ == "__main__":
+    app = MacMacro()
+    app.mainloop()
